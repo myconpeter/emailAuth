@@ -1,7 +1,8 @@
 import express from "express";
 import {
     loginUser,
-    registerUser
+    registerUser,
+    logoutUser
 } from "../controllers/userController.js";
 
 
@@ -12,5 +13,8 @@ router.post('/login', loginUser)
 
 
 router.post('/register', registerUser)
+
+
+router.post('/logout', logoutUser)
 
 export default router
