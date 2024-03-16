@@ -1,6 +1,29 @@
 import User from '../models/userSchema.js'
+import UserVerification from '../models/userVerification.js'
 import asyncHandler from 'express-async-handler'
 import generateToken from './generateToken.js'
+
+
+import nodemailer from 'nodemailer'
+import { v4 as uuidv4 } from 'uuid';
+
+
+let transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.AUTH_EMAIL,
+        password: process.env.AUTH_PASSWORD
+    }
+})
+
+transporter.verify((error, success) => {
+    if (error) {
+        console.log(error)
+    } else {
+        console.log('ready')
+        console.log('success')
+    }
+})
 
 
 
