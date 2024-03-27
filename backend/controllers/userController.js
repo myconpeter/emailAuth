@@ -7,11 +7,14 @@ import path from 'path'
 
 import nodemailer from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
-import { config } from 'dotenv'; // Assuming you're using dotenv for environment variables
+
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 
-// Load environment variables from a .env file
-config();
+
+
 
 // Create a transporter using Gmail SMTP
 let transporter = nodemailer.createTransport({
@@ -23,6 +26,18 @@ let transporter = nodemailer.createTransport({
         pass: process.env.AUTH_PASSWORD
     }
 });
+
+// verify transpoter
+
+transporter.verify((error, success) => {
+    if (error) {
+        console.log(error)
+    } else {
+        console.log('success, ready for message')
+        console.log(success)
+    }
+})
+
 
 
 
@@ -47,16 +62,6 @@ const loginUser = asyncHandler(async (req, res) => {
     }
 })
 
-// verify trabspoter
-
-transporter.verify((error, success) => {
-    if (error) {
-        console.log(error)
-    } else {
-        console.log('success, ready for message')
-        console.log(success)
-    }
-})
 
 
 // desc @register user / set Token
@@ -65,125 +70,145 @@ transporter.verify((error, success) => {
 
 
 const registerUser = asyncHandler(async (req, res) => {
-    const { name, email, password, dateofbirth } = req.body
+
+    const { firstname, email, password, dateofbirth } = req.body
 
     const userExist = await User.findOne({ email })
 
     if (userExist) {
-        res.status(400)
-        throw new Error('This User Already Exist')
-
+        res.status(401)
+        throw new Error('Email already exist')
     }
 
-    const createdUser = await User.create({
-        name,
-        password,
+    // create a user
+
+    const newUser = await User.create({
+        firstname,
         email,
-        dateofbirth,
-        verified: false
+        password,
+        dateofbirth
+
     })
 
-    if (createdUser) {
-        generateToken(res, createdUser)
+    if (newUser) {
+
+        sendVerifificationEmail(newUser, res)
+
+        // generateToken(res, newUser._id)
+        // res.status(201).json({
+        //     message: 'new User created all that is needed is to verifiy',
+        //     ...newUser
+
+
+
+        // })
 
     } else {
         res.status(401)
-        throw new Error('Resoure not found')
-
+        throw new Error('Unsuccessful')
     }
-    sendVerifificationEmail(result, res)
 
 })
 
 
 /// handle verification
-
 const sendVerifificationEmail = async ({ _id, email }, res) => {
-    const currentUrl = "http://localhost:5000/"
+    const currentUrl = 'http://localhost:5000'; // Replace with your website URL
     const uniqueString = uuidv4() + _id
+    const activateLink = `${currentUrl}/api/user/verify/${_id}/${uniqueString}`;
 
-    // mail options
-    const mailOption = {
-        from: 'Nodemailer <example@nodemailer.com>',
-        to: 'Nodemailer <example@nodemailer.com>',
-        subject: 'AMP4EMAIL message',
-        text: 'For clients with plaintext support only',
-        html: '<p>For clients that do not support AMP4EMAIL or amp content is not valid</p>',
-        amp: `<!doctype html>
-        <html ⚡4email>
-          <head>
-            <meta charset="utf-8">
-            <style amp4email-boilerplate>body{visibility:hidden}</style>
-            <script async src="https://cdn.ampproject.org/v0.js"></script>
-            <script async custom-element="amp-anim" src="https://cdn.ampproject.org/v0/amp-anim-0.1.js"></script>
-          </head>
-          <body>
-            <p>Image: <amp-img src="https://cldup.com/P0b1bUmEet.png" width="16" height="16"/></p>
-            <a href=${currentUrl + 'user/verify/' + _id + '/' + uniqueString}>Click here to verify</a>
-            <p>GIF (requires "amp-anim" script in header):<br/>
-              <amp-anim src="https://cldup.com/D72zpdwI-i.gif" width="500" height="350"/></p>
-          </body>
-        </html>`
+
+    const mailOptions = {
+        from: process.env.AUTH_EMAIL,
+        to: email,
+        subject: 'Welcome to Our Platform!',
+        html: `
+            <html>
+                <head>
+                    <style>
+                        .container {
+                            max-width: 600px;
+                            margin: 0 auto;
+                            padding: 20px;
+                            font-family: Arial, sans-serif;
+                            border: 1px solid #ccc;
+                            border-radius: 10px;
+                        }
+                        .logo {
+                            display: block;
+                            margin: 0 auto;
+                            width: 200px;
+                        }
+                        .button {
+                            display: inline-block;
+                            padding: 10px 20px;
+                            background-color: #007bff;
+                            color: #fff;
+                            text-decoration: none;
+                            border-radius: 5px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <img src="https://th.bing.com/th?id=ORMS.74c6b9abdf846c014d655f55151c47bb&pid=Wdp&w=300&h=156&qlt=90&c=1&rs=1&dpr=1&p=0" alt="Company Logo" class="logo">
+                        <h2>Welcome to Our Platform!</h2>
+                        <p>Please confirm your email to activate your account.</p>
+                        <a href="${activateLink}" class="button">Activate Account</a>
+                    </div>
+                </body>
+            </html>
+        `
     };
 
-    //  hash the unique string in the model
 
-
-    const newVerification = await UserVerification.create({
-        userId,
+    const newUserVerification = await UserVerification.create({
+        userId: _id,
         uniqueString,
         createdAt: Date.now(),
-        expiresAt: Date.now() + 216000
-
+        expiresAt: Date.now() + 21600000
 
     })
 
-    if (newVerification) {
-        res.status(201).json({
-            'status': 'pending',
-            'message': 'Verification email sent'
-        })
+    if (newUserVerification) {
+        const sendMail = transporter.sendMail(mailOptions)
+
+        // here is where u add th 
+
+        if (sendMail) {
+            res.status(200).json({
+                message: 'pending',
+                details: 'check ur mail'
+            })
+        } else {
+            res.status(400)
+            throw new Error('Failed to send mail')
+        }
+
     } else {
-        res.status(401)
+        res.status(201)
+        throw new Error('Cannot save user verification')
 
-        throw new Error('User verication  was unsuccefully')
     }
-
-
 }
 
+const app = express()
+const __dirname = path.resolve()
+app.use(express.static(path.join(__dirname, 'backend/views')))
 
-// verify email route
-
-const verifyEmail = asyncHandler(async (req, res) => {
+const checkMail = asyncHandler(async (req, res) => {
     let { userId, uniqueString } = req.params
 
-    const verified = await UserVerification.findOne({ userId })
-
-    if (verified) {
-        console.log(verified)
-        if (verified.length > 0) {
-
-            const { expiresAt } = [0]
-            if (expiresAt < Date.now()) {
-                let verication = await 
-            }
-
-        } else {
-            let message = 'Account record doesnt exist'
-            res.redirect(`/verified/error=true&message=${message}`)
-        }
-    }
-    else {
-        let message = 'an error occured'
-        res.redirect(`/verified/error=true&message=${message}`)
-        throw new Error('not verified')
+    const checkUserId = await UserVerification.findOne({ userId })
+    if (checkUserId) {
+        res.sendFile(path.resolve(__dirname, 'backend', 'views', 'index.html'))
     }
 })
 
 
+import express from 'express'
 const message = asyncHandler(async (req, res) => {
-    res.sendFile(path.join(__dirname, "./../views/index.html"))
+    res.sendFile(express.static(path.join(__dirname, 'frontend/dist')))
 })
 
 
@@ -209,6 +234,11 @@ const logoutUser = asyncHandler(async (req, res) => {
 export {
     loginUser,
     registerUser,
-    logoutUser
+    logoutUser,
+    checkMail,
+    message
+
+
+
 }
 
