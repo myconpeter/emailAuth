@@ -3,6 +3,7 @@ import UserVerification from '../models/userVerification.js'
 import asyncHandler from 'express-async-handler'
 import generateToken from './generateToken.js'
 import path from 'path'
+import bcrypt from "bcrypt"
 
 
 import nodemailer from 'nodemailer';
@@ -192,6 +193,7 @@ const sendVerifificationEmail = async ({ _id, email }, res) => {
     }
 }
 
+import express from 'express'
 const app = express()
 const __dirname = path.resolve()
 app.use(express.static(path.join(__dirname, 'backend/views')))
@@ -199,16 +201,108 @@ app.use(express.static(path.join(__dirname, 'backend/views')))
 const checkMail = asyncHandler(async (req, res) => {
     let { userId, uniqueString } = req.params
 
+
     const checkUserId = await UserVerification.findOne({ userId })
+
     if (checkUserId) {
-        res.sendFile(path.resolve(__dirname, 'backend', 'views', 'index.html'))
+        // user verification exist
+        if (checkUserId) {
+            const expiresAt = checkUserId.expiresAt
+
+            const hashedUniqueString = checkUserId.uniqueString
+
+
+
+            if (expiresAt < Date.now()) {
+                // this means that the account has expired
+                const deleteUserVerification = await UserVerification.deleteOne({ userId })
+
+                if (deleteUserVerification) {
+                    // succeful delete user verification
+                    const deleteUser = await User.deleteOne({ userId })
+
+                    if (deleteUser) {
+                        let message = 'Link has expired . Please register again'
+                        return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+
+                    } else {
+                        let message = 'Delete user failed'
+                        return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+                    }
+
+                } else {
+                    //deleteUserVerification deletation error
+                    let message = 'Delete  user verification failed'
+                    return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+                }
+
+            } else {
+                // the result has not yet expired, so we validate the user string
+
+                const isMatch = await bcrypt.compare(uniqueString, hashedUniqueString);
+                // compare the recieved string and and string
+
+                if (isMatch) {
+                    // update the user schema to verified = true
+
+                    const updateUser = await User.updateOne({ _id: userId }, { verified: true })
+
+                    if (updateUser) {
+                        // delete the user verification
+                        const deleteUserVerification = await UserVerification.deleteOne({ userId })
+
+                        if (deleteUserVerification) {
+                            // redirect the user to sign
+
+                            res.send('Thanks for verifing your user verification')
+
+                        } else {
+                            let message = 'An error occured while deleting user verification'
+                            return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+                        }
+
+
+                    } else {
+                        let message = 'An Error occured while updating user details'
+                        return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+                    }
+
+
+
+
+                } else {
+                    // else send err
+                    let message = 'This link is invalid, please check your inbox'
+                    return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+
+                }
+
+
+            }
+
+
+
+
+
+
+        } else {
+            // user verification doesnt exist
+            let message = 'Account record does not exist or has  used'
+            return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+
+        }
+
+    } else {
+        let message = 'this link has expired'
+        return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
     }
+
 })
 
 
-import express from 'express'
-const message = asyncHandler(async (req, res) => {
-    res.sendFile(express.static(path.join(__dirname, 'frontend/dist')))
+
+const verify = asyncHandler(async (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'backend', 'views', 'index.html'))
 })
 
 
@@ -236,7 +330,7 @@ export {
     registerUser,
     logoutUser,
     checkMail,
-    message
+    verify
 
 
 

@@ -17,11 +17,12 @@
                 </path>
             </svg>
             <div class="text-center">
-                <h3 class="md:text-2xl text-base text-gray-900 font-semibold text-center">Account Verifification Done!
+                <h3 class="md:text-2xl text-base text-gray-900 font-semibold text-center error-message">Account
+                    Verifification Done!
                 </h3>
-                <p class="text-gray-600 my-2">Thank you for completing your secure online payment.</p>
-                <p> Have a great day! </p>
-                <div class="py-10 text-center">
+                <p class="text-gray-600 my-2 otherMessage">Thank you for completing your secure online payment.</p>
+                <p id="message" class="redirect"> Have a great day! </p>
+                <div class="py-10 text-center button">
                     <a href="#" class="px-12 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3">
                         LOG IN
                     </a>
@@ -30,5 +31,45 @@
         </div>
     </div>
 </body>
+
+<script>
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+
+    const error = urlParams.get('error');
+
+    const message = urlParams.get('message');
+
+
+    if (error === 'true') {
+        const errorMessage = urlParams.get('message');
+        const errorMessageElement = document.querySelector('.error-message');
+
+        errorMessageElement.textContent = errorMessage;
+        errorMessageElement.classList.remove('hidden');
+
+
+
+        const svgElement = document.querySelector('.text-green-600');
+        if (svgElement) {
+            svgElement.style.display = 'none';
+        }
+
+        const logInButton = document.querySelector('.button')
+        if (logInButton) {
+            logInButton.style.display = 'none'
+        }
+
+        const otherMessage = document.querySelector('.otherMessage')
+        if (otherMessage) {
+            otherMessage.style.display = 'none'
+        }
+
+        const redirect = document.querySelector('.redirect')
+        redirect.textContent = 'Please check your mail'
+    }
+</script>
+</script>
+
 
 </html>

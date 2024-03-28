@@ -4,7 +4,7 @@ import {
     registerUser,
     checkMail,
     logoutUser,
-    message
+    verify
 
 } from "../controllers/userController.js";
 
@@ -23,6 +23,6 @@ router.post('/logout', logoutUser)
 
 router.get('/verify/:userId/:uniqueString', checkMail)
 
-router.get('/verify', message)
+router.get('/verify', verify)
 
 export default router
