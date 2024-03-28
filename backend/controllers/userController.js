@@ -211,7 +211,7 @@ app.use(express.static(path.join(__dirname, 'backend/views')))
 
 const checkMail = asyncHandler(async (req, res) => {
     let { userId, uniqueString } = req.params
-    console.log('user id ===' + userId)
+
 
 
     const checkUserId = await UserVerification.findOne({ userId })
@@ -337,6 +337,194 @@ const logoutUser = asyncHandler(async (req, res) => {
 })
 
 
+//////////////////////////////////////////////////////////////////////////////////////RESET PASSWORD////////////////////////////////////////////////////////////////////////////////////// 
+// desc @Reset password
+// route POST to 
+//@acess private
+
+const sendResetPasswordEmail = async ({ _id, email }, res) => {
+    const currentUrl = 'http://localhost:5000'; // Replace with your website URL
+    const uniqueString = uuidv4() + _id
+    const activateLink = `${currentUrl}/api/user/reset/${_id}/${uniqueString}`;
+
+
+    const mailOptions = {
+        from: process.env.AUTH_EMAIL,
+        to: email,
+        subject: 'YOU wanna reset ur password!',
+        html: `
+            <html>
+                <head>
+                    <style>
+                        .container {
+                            max-width: 600px;
+                            margin: 0 auto;
+                            padding: 20px;
+                            font-family: Arial, sans-serif;
+                            border: 1px solid #ccc;
+                            border-radius: 10px;
+                        }
+                        .logo {
+                            display: block;
+                            margin: 0 auto;
+                            width: 200px;
+                        }
+                        .button {
+                            display: inline-block;
+                            padding: 10px 20px;
+                            background-color: #007bff;
+                            color: #fff;
+                            text-decoration: none;
+                            border-radius: 5px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <img src="https://th.bing.com/th?id=ORMS.74c6b9abdf846c014d655f55151c47bb&pid=Wdp&w=300&h=156&qlt=90&c=1&rs=1&dpr=1&p=0" alt="Company Logo" class="logo">
+                        <h2>RESET UR PASSWORD !</h2>
+                        <p>Please RESET  your PASSWORD account.</p>
+                        <a href="${activateLink}" class="button">RESET Password</a>
+                    </div>
+                </body>
+            </html>
+        `
+    };
+
+
+    const resetPassword = await UserVerification.create({
+        userId: _id,
+        uniqueString,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + (5 * 60 * 1000)
+
+    })
+
+    if (resetPassword) {
+        const sendMail = transporter.sendMail(mailOptions)
+
+        // here is where u add th 
+
+        if (sendMail) {
+            res.status(200).json({
+                message: 'pending',
+                details: 'check ur mail'
+            })
+        } else {
+            res.status(400)
+            throw new Error('Failed to send mail')
+        }
+
+    } else {
+        res.status(201)
+        throw new Error('Cannot save user verification')
+
+    }
+}
+
+const resetPassword = asyncHandler(async (req, res) => {
+    const { email } = req.body
+
+    const user = await User.findOne({ email })
+
+    if (user) {
+        sendResetPasswordEmail(user, res)
+
+    } else {
+        res.status(401)
+        throw new Error('email not found')
+    }
+})
+
+app.use(express.static(path.join(__dirname, 'backend/views')))
+
+const checkPasswordLink = asyncHandler(async (req, res) => {
+    let { userId, uniqueString } = req.params
+
+
+
+    const checkUserId = await UserVerification.findOne({ userId })
+
+    if (checkUserId) {
+        // user verification exist
+        if (checkUserId) {
+            const expiresAt = checkUserId.expiresAt
+
+            const hashedUniqueString = checkUserId.uniqueString
+
+
+
+            if (expiresAt < Date.now()) {
+                // this means that the account has expired
+                const deleteUserVerification = await UserVerification.deleteOne({ userId })
+
+                if (deleteUserVerification) {
+                    // succeful delete user verification
+                    let message = 'Password Link has expired . Please reset  your password again.'
+                    return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+
+
+
+                } else {
+                    //deleteUserVerification deletation error
+                    let message = 'Delete  user verification failed'
+                    return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+                }
+
+            } else {
+                // the result has not yet expired, so we validate the user string
+
+                const isMatch = await bcrypt.compare(uniqueString, hashedUniqueString);
+                console.log(uniqueString + ' ' + hashedUniqueString)
+                // compare the recieved string and and string
+
+                if (isMatch) {
+                    // update the user schema to verified = true
+
+                    const updateUser = await User.updateOne({ _id: userId }, { verified: true })
+                    if (updateUser) {
+                        // delete the user verification
+                        const deleteUserVerification = await UserVerification.deleteOne({ userId })
+
+                        if (deleteUserVerification) {
+                            // redirect the user to sign
+                            res.sendFile(path.resolve(__dirname, 'backend', 'views', 'form.html'))
+                        } else {
+                            let message = 'An error occured while deleting user verification'
+                            return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+                        }
+
+
+                    } else {
+                        let message = 'An Error occured while updating user details'
+                        return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+                    }
+                } else {
+                    // else send err
+                    let message = 'This link is invalid, please check your inbox'
+                    return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+                }
+            }
+        } else {
+            // user verification doesnt exist
+            let message = 'Account record does not exist or has  used'
+            return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+        }
+    } else {
+        let message = 'this link has expired'
+        return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+    }
+})
+
+
+
+
+
+
+const reset = asyncHandler(async (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'backend', 'views', 'form.html'))
+})
+
 
 
 // export all const
@@ -346,7 +534,10 @@ export {
     registerUser,
     logoutUser,
     checkMail,
-    verify
+    verify,
+    reset,
+    resetPassword,
+    checkPasswordLink
 
 
 
