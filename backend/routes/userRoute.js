@@ -7,7 +7,8 @@ import {
     verify,
     resetPassword,
     checkPasswordLink,
-    reset
+    reset,
+    changePassword
 
 } from "../controllers/userController.js";
 
@@ -30,5 +31,6 @@ router.get('/reset/:userId/:uniqueString', checkPasswordLink)
 router.get('/verify', verify)
 router.get('/reset', reset)
 router.post('/resetPassword', resetPassword)
+router.post('/changePassword', changePassword)
 
 export default router

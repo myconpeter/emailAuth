@@ -1,5 +1,6 @@
 import User from '../models/userSchema.js'
 import UserVerification from '../models/userVerification.js'
+import PasswordReset from '../models/resetPassword.js'
 import asyncHandler from 'express-async-handler'
 import generateToken from './generateToken.js'
 import path from 'path'
@@ -252,7 +253,7 @@ const checkMail = asyncHandler(async (req, res) => {
                 // the result has not yet expired, so we validate the user string
 
                 const isMatch = await bcrypt.compare(uniqueString, hashedUniqueString);
-                console.log(uniqueString + ' ' + hashedUniqueString)
+
                 // compare the recieved string and and string
 
                 if (isMatch) {
@@ -392,11 +393,11 @@ const sendResetPasswordEmail = async ({ _id, email }, res) => {
     };
 
 
-    const resetPassword = await UserVerification.create({
+    const resetPassword = await PasswordReset.create({
         userId: _id,
         uniqueString,
         createdAt: Date.now(),
-        expiresAt: Date.now() + (5 * 60 * 1000)
+        expiresAt: Date.now() + (10 * 5 * 60 * 1000)
 
     })
 
@@ -443,7 +444,7 @@ const checkPasswordLink = asyncHandler(async (req, res) => {
 
 
 
-    const checkUserId = await UserVerification.findOne({ userId })
+    const checkUserId = await PasswordReset.findOne({ userId })
 
     if (checkUserId) {
         // user verification exist
@@ -456,9 +457,9 @@ const checkPasswordLink = asyncHandler(async (req, res) => {
 
             if (expiresAt < Date.now()) {
                 // this means that the account has expired
-                const deleteUserVerification = await UserVerification.deleteOne({ userId })
+                const deleteDatabasePassword = await PasswordReset.deleteOne({ userId })
 
-                if (deleteUserVerification) {
+                if (deleteDatabasePassword) {
                     // succeful delete user verification
                     let message = 'Password Link has expired . Please reset  your password again.'
                     return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
@@ -467,7 +468,7 @@ const checkPasswordLink = asyncHandler(async (req, res) => {
 
                 } else {
                     //deleteUserVerification deletation error
-                    let message = 'Delete  user verification failed'
+                    let message = 'Delete  Database Password failed'
                     return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
                 }
 
@@ -475,43 +476,26 @@ const checkPasswordLink = asyncHandler(async (req, res) => {
                 // the result has not yet expired, so we validate the user string
 
                 const isMatch = await bcrypt.compare(uniqueString, hashedUniqueString);
-                console.log(uniqueString + ' ' + hashedUniqueString)
+
                 // compare the recieved string and and string
 
                 if (isMatch) {
-                    // update the user schema to verified = true
+                    res.sendFile(path.resolve(__dirname, 'backend', 'views', 'form.html'))
 
-                    const updateUser = await User.updateOne({ _id: userId }, { verified: true })
-                    if (updateUser) {
-                        // delete the user verification
-                        const deleteUserVerification = await UserVerification.deleteOne({ userId })
-
-                        if (deleteUserVerification) {
-                            // redirect the user to sign
-                            res.sendFile(path.resolve(__dirname, 'backend', 'views', 'form.html'))
-                        } else {
-                            let message = 'An error occured while deleting user verification'
-                            return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
-                        }
-
-
-                    } else {
-                        let message = 'An Error occured while updating user details'
-                        return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
-                    }
                 } else {
-                    // else send err
-                    let message = 'This link is invalid, please check your inbox'
+                    let message = 'This password reset link does not match'
                     return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
+
+
                 }
             }
         } else {
             // user verification doesnt exist
-            let message = 'Account record does not exist or has  used'
+            let message = 'This password userId doesnt exist'
             return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
         }
     } else {
-        let message = 'this link has expired'
+        let message = 'this password link has expired'
         return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
     }
 })
@@ -523,6 +507,25 @@ const checkPasswordLink = asyncHandler(async (req, res) => {
 
 const reset = asyncHandler(async (req, res) => {
     res.sendFile(path.resolve(__dirname, 'backend', 'views', 'form.html'))
+})
+
+// desc @Reset password
+// route POST to  api/user/changePassword
+//@acess public
+
+
+const changePassword = asyncHandler(async (req, res) => {
+    const { password, confirmPassword, userId, uniqueString } = req.body
+
+    // check if this user exist
+    const user = await User.findOne({ userId })
+    if (user) {
+        console.log(user)
+    }
+    else {
+        res.status(401)
+        throw new Error('this user doesnt exist')
+    }
 })
 
 
@@ -537,7 +540,8 @@ export {
     verify,
     reset,
     resetPassword,
-    checkPasswordLink
+    checkPasswordLink,
+    changePassword
 
 
 
