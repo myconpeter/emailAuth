@@ -56,10 +56,21 @@ const loginUser = asyncHandler(async (req, res) => {
     const userExist = await User.findOne({ email })
 
     if (userExist && await (userExist.matchPassword(password))) {
-        generateToken(res, userExist)
-        res.status(201).json({
-            ...userExist._doc
-        })
+
+        if (userExist.verified === false) {
+            throw new Error('This Account is not verified yet')
+            res.status(401)
+
+        } else {
+            generateToken(res, userExist)
+            res.status(201).json({
+                ...userExist._doc
+            })
+        }
+
+    } else {
+        res.status(401)
+        throw new Error('Invalid Email or Password')
     }
 })
 
@@ -200,6 +211,7 @@ app.use(express.static(path.join(__dirname, 'backend/views')))
 
 const checkMail = asyncHandler(async (req, res) => {
     let { userId, uniqueString } = req.params
+    console.log('user id ===' + userId)
 
 
     const checkUserId = await UserVerification.findOne({ userId })
@@ -240,6 +252,7 @@ const checkMail = asyncHandler(async (req, res) => {
                 // the result has not yet expired, so we validate the user string
 
                 const isMatch = await bcrypt.compare(uniqueString, hashedUniqueString);
+                console.log(uniqueString + ' ' + hashedUniqueString)
                 // compare the recieved string and and string
 
                 if (isMatch) {
@@ -253,8 +266,11 @@ const checkMail = asyncHandler(async (req, res) => {
 
                         if (deleteUserVerification) {
                             // redirect the user to sign
+                            res.sendFile(path.resolve(__dirname, 'backend', 'views', 'index.html'))
 
-                            res.send('Thanks for verifing your user verification')
+
+
+
 
                         } else {
                             let message = 'An error occured while deleting user verification'
