@@ -520,7 +520,7 @@ const changePassword = asyncHandler(async (req, res) => {
     // check if this user exist
     const user = await User.findOne({ userId })
     if (user) {
-        console.log(user)
+        console.log(user + ' ' + "micheal")
     }
     else {
         res.status(401)
