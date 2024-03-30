@@ -4,9 +4,13 @@ import asyncHandler from 'express-async-handler'
 import path from 'path'
 import bcrypt from "bcrypt"
 
+import { sendResetPasswordEmail } from '../email/resetPasswordEmail.js'
 
-import nodemailer from 'nodemailer';
-import { v4 as uuidv4 } from 'uuid';
+
+
+
+
+
 
 import dotenv from 'dotenv'
 
@@ -17,114 +21,26 @@ const app = express()
 const __dirname = path.resolve()
 app.use(express.static(path.join(__dirname, 'backend/views')))
 
+app.use(sendResetPasswordEmail)
 
+import nodemailer from 'nodemailer';
 
 // Create a transporter using Gmail SMTP
-let transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-        user: process.env.AUTH_EMAIL,
-        pass: process.env.AUTH_PASSWORD
-    }
-});
 
-// verify transpoter
 
-transporter.verify((error, success) => {
-    if (error) {
-        console.log(error)
-    } else {
-        console.log('success, ready for message')
-        console.log(success)
-    }
-})
+
+
+
+
 
 //////////////////////////////////////////////////////////////////////////////////////RESET PASSWORD////////////////////////////////////////////////////////////////////////////////////// 
 // desc @Reset password
 // route POST to 
 //@acess private
 
-const sendResetPasswordEmail = async ({ _id, email }, res) => {
-    const currentUrl = 'http://localhost:5000'; // Replace with your website URL
-    const resetString = uuidv4() + _id
-    const activateLink = `${currentUrl}/api/user/reset/${_id}/${resetString}`;
 
 
-    const mailOptions = {
-        from: process.env.AUTH_EMAIL,
-        to: email,
-        subject: 'YOU wanna reset ur password!',
-        html: `
-            <html>
-                <head>
-                    <style>
-                        .container {
-                            max-width: 600px;
-                            margin: 0 auto;
-                            padding: 20px;
-                            font-family: Arial, sans-serif;
-                            border: 1px solid #ccc;
-                            border-radius: 10px;
-                        }
-                        .logo {
-                            display: block;
-                            margin: 0 auto;
-                            width: 200px;
-                        }
-                        .button {
-                            display: inline-block;
-                            padding: 10px 20px;
-                            background-color: #007bff;
-                            color: #fff;
-                            text-decoration: none;
-                            border-radius: 5px;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <img src="https://th.bing.com/th?id=ORMS.74c6b9abdf846c014d655f55151c47bb&pid=Wdp&w=300&h=156&qlt=90&c=1&rs=1&dpr=1&p=0" alt="Company Logo" class="logo">
-                        <h2>RESET UR PASSWORD !</h2>
-                        <p>Please RESET  your PASSWORD account.</p>
-                        <a href="${activateLink}" class="button">RESET Password</a>
-                    </div>
-                </body>
-            </html>
-        `
-    };
 
-
-    const resetPassword = await PasswordReset.create({
-        userId: _id,
-        resetString,
-        createdAt: Date.now(),
-        expiresAt: Date.now() + (10 * 5 * 60 * 1000)
-
-    })
-
-    if (resetPassword) {
-        const sendMail = transporter.sendMail(mailOptions)
-
-        // here is where u add th 
-
-        if (sendMail) {
-            res.status(200).json({
-                message: 'pending',
-                details: 'check ur mail'
-            })
-        } else {
-            res.status(400)
-            throw new Error('Failed to send mail')
-        }
-
-    } else {
-        res.status(201)
-        throw new Error('Cannot save user verification')
-
-    }
-}
 
 const resetPassword = asyncHandler(async (req, res) => {
     const { email } = req.body
@@ -140,7 +56,7 @@ const resetPassword = asyncHandler(async (req, res) => {
     }
 })
 
-app.use(express.static(path.join(__dirname, 'backend/views')))
+
 
 const checkPasswordLink = asyncHandler(async (req, res) => {
     let { userId, resetString } = req.params
@@ -155,6 +71,7 @@ const checkPasswordLink = asyncHandler(async (req, res) => {
             const expiresAt = checkUserId.expiresAt
 
             const hashedResetString = checkUserId.resetString
+
 
 
 
@@ -178,7 +95,9 @@ const checkPasswordLink = asyncHandler(async (req, res) => {
             } else {
                 // the result has not yet expired, so we validate the user string
 
+
                 const isMatch = await bcrypt.compare(resetString, hashedResetString);
+
 
                 // compare the recieved string and hashedstring
 
@@ -186,7 +105,7 @@ const checkPasswordLink = asyncHandler(async (req, res) => {
                     res.sendFile(path.resolve(__dirname, 'backend', 'views', 'form.html'))
 
                 } else {
-                    let message = 'This password reset link does not match'
+                    let message = 'This password reset link does not match 00'
                     return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
 
 
@@ -240,7 +159,9 @@ const changePassword = asyncHandler(async (req, res) => {
         } {
             // it hasnt expired
             // now compare strings
-            const confirm = bcrypt.compare(resetString, checkId.resetString)
+            const confirm = await bcrypt.compare(resetString, checkId.resetString)
+
+
 
             if (confirm) {
                 // passwords match
