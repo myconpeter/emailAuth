@@ -523,7 +523,50 @@ const changePassword = asyncHandler(async (req, res) => {
 
     const checkId = await PasswordReset.findOne({ userId })
     if (checkId) {
-        console.log(checkId)
+        if (checkId.expiresAt < Date.now) {
+            // it has expired 
+            const deleteReset = await PasswordReset.deleteOne({ userId })
+
+            if (deleteReset) {
+                // password reset hasd beeen removesd
+            } else {
+                res.status(401)
+                throw new Error('Cant delete this password')
+            }
+
+        } {
+            // it hasnt expired
+            // now compare strings
+            const confirm = bcrypt.compare(resetString, checkId.resetString)
+
+            if (confirm) {
+                // passwords match
+                // compare both password
+
+                if (password !== confirmPassword) {
+                    res.status(401)
+                    throw new Error("Passwords do not  match")
+                } else {
+                    //  hash the password and update in database
+                    checkId.password = password
+
+                    const updatedPassword = checkId.save()
+                    if (updatedPassword) {
+                        console.log(updatedPassword)
+
+                    } else {
+                        res.status(401)
+                        throw new Error('password update failed')
+                    }
+                }
+
+
+            } else {
+                res.status(401)
+                throw new Error('This  is not the correct string')
+            }
+
+        }
 
     } else {
         res.status(401)
