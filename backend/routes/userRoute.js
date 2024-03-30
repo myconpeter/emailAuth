@@ -5,12 +5,16 @@ import {
     checkMail,
     logoutUser,
     verify,
+
+} from "../controllers/userController.js";
+
+import {
     resetPassword,
     checkPasswordLink,
     reset,
     changePassword
 
-} from "../controllers/userController.js";
+} from '../controllers/resetPassword.js'
 
 
 const router = express.Router()
