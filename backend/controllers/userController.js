@@ -345,8 +345,8 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 const sendResetPasswordEmail = async ({ _id, email }, res) => {
     const currentUrl = 'http://localhost:5000'; // Replace with your website URL
-    const uniqueString = uuidv4() + _id
-    const activateLink = `${currentUrl}/api/user/reset/${_id}/${uniqueString}`;
+    const resetString = uuidv4() + _id
+    const activateLink = `${currentUrl}/api/user/reset/${_id}/${resetString}`;
 
 
     const mailOptions = {
@@ -395,7 +395,7 @@ const sendResetPasswordEmail = async ({ _id, email }, res) => {
 
     const resetPassword = await PasswordReset.create({
         userId: _id,
-        uniqueString,
+        resetString,
         createdAt: Date.now(),
         expiresAt: Date.now() + (10 * 5 * 60 * 1000)
 
@@ -440,7 +440,7 @@ const resetPassword = asyncHandler(async (req, res) => {
 app.use(express.static(path.join(__dirname, 'backend/views')))
 
 const checkPasswordLink = asyncHandler(async (req, res) => {
-    let { userId, uniqueString } = req.params
+    let { userId, resetString } = req.params
 
 
 
@@ -451,7 +451,7 @@ const checkPasswordLink = asyncHandler(async (req, res) => {
         if (checkUserId) {
             const expiresAt = checkUserId.expiresAt
 
-            const hashedUniqueString = checkUserId.uniqueString
+            const hashedResetString = checkUserId.resetString
 
 
 
@@ -475,9 +475,9 @@ const checkPasswordLink = asyncHandler(async (req, res) => {
             } else {
                 // the result has not yet expired, so we validate the user string
 
-                const isMatch = await bcrypt.compare(uniqueString, hashedUniqueString);
+                const isMatch = await bcrypt.compare(resetString, hashedResetString);
 
-                // compare the recieved string and and string
+                // compare the recieved string and hashedstring
 
                 if (isMatch) {
                     res.sendFile(path.resolve(__dirname, 'backend', 'views', 'form.html'))
@@ -495,7 +495,7 @@ const checkPasswordLink = asyncHandler(async (req, res) => {
             return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
         }
     } else {
-        let message = 'this password link has expired'
+        let message = 'this password does not even exist'
         return res.redirect(`http://localhost:5000/api/user/verify?error=true&message=${message}`)
     }
 })
@@ -506,6 +506,8 @@ const checkPasswordLink = asyncHandler(async (req, res) => {
 
 
 const reset = asyncHandler(async (req, res) => {
+
+
     res.sendFile(path.resolve(__dirname, 'backend', 'views', 'form.html'))
 })
 
@@ -515,17 +517,33 @@ const reset = asyncHandler(async (req, res) => {
 
 
 const changePassword = asyncHandler(async (req, res) => {
-    const { password, confirmPassword, userId, uniqueString } = req.body
+    const { password, confirmPassword, userId, resetString } = req.body
+
+
+
+    const checkId = await PasswordReset.findOne({ userId })
+    if (checkId) {
+        console.log(checkId)
+
+    } else {
+        res.status(401)
+        throw new Error('invalid User id')
+    }
+
+
+
 
     // check if this user exist
-    const user = await User.findOne({ userId })
-    if (user) {
-        console.log(user + ' ' + "micheal")
-    }
-    else {
-        res.status(401)
-        throw new Error('this user doesnt exist')
-    }
+    // const user = await User.findOne({ userId })
+    // if (user) {
+    //     console.log(user + ' ' + "micheal")
+    // }
+    // else {
+    //     res.status(401)
+    //     throw new Error('this user doesnt exist')
+    // }
+
+    res.send('password')
 })
 
 

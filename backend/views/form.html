@@ -8,9 +8,12 @@
 </head>
 
 <body>
-    <form action="">
-        <input type="text">
-        <input type="text">
+    <form action="/api/user/changePassword" method="post">
+        password:
+        <input type="password" name="password">
+        confirm password
+        <input type="password" name="confirmPassword">
+        <button type="submit">change</button>
     </form>
 </body>
 

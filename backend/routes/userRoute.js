@@ -26,7 +26,7 @@ router.post('/logout', logoutUser)
 
 
 router.get('/verify/:userId/:uniqueString', checkMail)
-router.get('/reset/:userId/:uniqueString', checkPasswordLink)
+router.get('/reset/:userId/:resetString', checkPasswordLink)
 
 router.get('/verify', verify)
 router.get('/reset', reset)
